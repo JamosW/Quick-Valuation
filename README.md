@@ -13,7 +13,7 @@ By utilizing financial metrics and user-provided inputs, the application provide
 
 This app serves two purposes: 
 1. Quick and dirty valuation to help you decide if the stock is worth investing time and energy to look deeper
-2. Post-financial-model visualization of your stock/investments calculated value.
+2. Post-financial-model visualization of your stock/investments with informated interactive graphs
 
 ## Features
 
