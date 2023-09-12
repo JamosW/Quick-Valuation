@@ -42,7 +42,7 @@ pvTable <- function(name, stage, ...){
       dps <- discount * (x$dividends_nInput / x$numShares_nInput)
       # reinv <- ((x$capEx_nInput - x$depreciation_nINput) - cwc_nInput)
       
-      #function that alters x Variables
+      #function that alters x Variables based on the growth rate
       alterX <- function(var, vals){
         var[vals] <- with(var, lapply(vals, \(a) eval(as.symbol(a)) * discount))
         return(var)
@@ -83,6 +83,7 @@ pvTable <- function(name, stage, ...){
             calcValss <- paste0(c("capEx", "depreciation", "cwc", "debt_iss", "ebit"), "_nInput")
             x <- alterX(x, calcValss)
             EBI <- (x$ebit_nInput * (1 - x$taxRate_nInput))
+            #if we want to manually enter a value for the reinvestment rate or use the calculation (EBI  * (1 - x$reinvR_nInput) - totalReinvestments(x))
             fcff <- if(length(x$reinvR_nInput) && is.finite(x$reinvR_nInput) && x$reinvR_nInput > 0) EBI - (EBI * x$reinvR_nInput) else EBI  * (1 - x$reinvR_nInput) - totalReinvestments(x)
             total_debt <- x$debt_nInput
             debt_to_capital <- total_debt/(total_debt + x$market_cap_nInput)
@@ -295,13 +296,19 @@ grabValue <- function(value, tabl, which = NULL){
 #present value of dividends
 pvPlot <- function(table){
   
-  tryCatch({table[fnrow(table), ] |> 
-      stack() |>
-      rev() |> 
-      setNames(c("year", "PV")) |> 
-      e_chart(year) |>
-      e_line(PV) |>
-      e_tooltip(trigger = "item")}, error = function(e) e, finally = "")
+  test = qDF(table[fnrow(table), ]) |> 
+    stack() |>
+    rev() |> 
+    setNames(c("year", "PV")) |> 
+    (\(x) {
+      x$year <- seq_row(x)
+      return(x)
+      })()
+  
+  test |> 
+  e_chart(year) |>
+  e_line(PV) |>
+  e_tooltip(trigger = "item")
 
 }
 
@@ -536,11 +543,11 @@ hypoGraph <- function(tabl, stage, ...){
 
 getVars <- function(name){
   
-  #capm doesn't differ between the types but we need to give them an environment reference
-  CAPM = rep(list(c("Rf" = "rf", "Beta" = "beta", "ErP" = "erp")), 3) |> 
-    setNames(list("DDM", "FCFE", "FCFF"))
+  capm = c("Rf" = "rf", "Beta" = "beta", "ErP" = "erp")
   
-  capm_unique <- CAPM[[1]]
+  #capm doesn't differ between the types but we need to give them an environment reference
+  CAPM = rep(list(capm), 3) |> 
+    setNames(list("DDM", "FCFE", "FCFF"))
   
   sharedMain = c("#Shares" = "numShares","GR" = "gr", "Time Span" = "tspan")
   
@@ -572,3 +579,46 @@ getVars <- function(name){
   
   get(name, envir = sys.frame(sys.nframe()))
 }
+
+tooltipValues <- function(title){
+  val = switch (title,
+                "Rf" = "Risk free rate of return",
+                "Beta" = "Beta - Market risk",
+                "ErP" = "Equity Risk Premium",
+                "Market Cap" = "Market Cap - Stock Price * Shares outstanding",
+                "EBIT" = "Earnings before interest payments and taxes",
+                "Tax Rate" = "Tax Rate - Tax rate expected to be paid",
+                "Debt" = "Total debt outstanding",
+                "COD" = "Cost of Debt - Usually gathered from bond rating organizations",
+                "Cash" = "Total cash",
+                "m_ReinvRate" = "Reinvestment Rate - It is automatically calculated but you can provide one manually",
+                "T_RR" = "Terminal stage Reinvestment Rate",
+                "T_COC" = "Terminal stage Cost of Capital",
+                "Dividends" = "Dividends - Payment to shareholders",
+                "Net Income" = "Net Income - Income after all obligations are met for specified peried",
+                "#Shares" = "Number of shares outstanding",
+                "GR" = "Growth Rate",
+                "Time Span" = "The length of time of observation",
+                "T_Payout Ratio" = "Terminal Payout Ratio of dividends. (Dividends/Net Income)",
+                "T_growth" = "Terminal stage growth rate",
+                "T_COE" = "Declining stage COE - The Cost of Equity in the declining stage",
+                "T_eqRR" = "Terminal stage Equity Reinvestment rate, typlically expressed as (1 - (FCFE/Net Income))",
+                "D_Payout Ratio" = "Declining stage Payout Ratio of dividends (Dividends/Net Income)",
+                "D_growth" = "Declining stage growth rate",
+                "D_COE" = "Declining stage COE - The Cost of Equity in the declining stage",
+                "D_eqRR" = "Declining stage Equity Reinvestment Rate",
+                "D_RR" = "Declining stage Reinvestment Rate - It is automatically calculated but you can provide one manually, 
+                EBI  * (1 - Reinvestment Rate) - Total Reinvestments",
+                "D_COC" = "Declining stage Cost of Capital - Should use the weighted average cost of capital, use the
+                calculated coc from table as a guidance",
+                "D_Time Span" = "Declining stage's length of time of observation",
+                "m_EqRR" = "Equity Reinvestment Rate - It is automatically calculated but you can provide one manually",
+                "CapEx" = "Capital Expenditures",
+                "Change Wk Cap" = "Change in working capital",
+                "Chicken"
+  )
+  
+  return(val)
+}
+
+

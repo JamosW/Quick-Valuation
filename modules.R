@@ -1,10 +1,13 @@
 
+
+
 ### numeric input module
 numericVInput <- function(id, label, value = 0) {
   ns <- NS(id)
   tagList(
     #numericInput usually paired with a text Output
-    numericInput(inputId = ns("nInput"), label = label, value = value, width = "100px", max = 100, min = 1)
+    numericInput(inputId = ns("nInput"), label = list(icon("info-circle") |> 
+                                                        bsplus::bs_embed_tooltip(title = tooltipValues(label)), title = label), value = value, width = "100px", max = 100, min = 1)
   )
 }
 
@@ -14,9 +17,7 @@ numericVServer <- function(id, lbl, val) {
     function(input, output, session) {
       bins = reactive(input$nInput)
       
-      return(
-        bins
-      )
+      return(bins)
       
     }
   )

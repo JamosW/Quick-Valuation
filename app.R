@@ -32,6 +32,7 @@ ui <- function(title){
         radioUI("stage", "Stages:", c("One", "Two", "Three")),
         fluidRow(
           width = 4,
+          textOutput("allo"),
           uiOutput("capm")),
         fluidRow(
           width = 4,
@@ -54,7 +55,7 @@ ui <- function(title){
             right = TRUE
           ), uiOutput("table"),
           DTOutput("tabl")),
-          tabPanel("Plot", echarts4rOutput("plot")),
+          tabPanel("Present Values", echarts4rOutput("plot")),
           tabPanel("Terminal", echarts4rOutput("terminal")),
           tabPanel("Hypothetical", echarts4rOutput("hypothetical"))
         ))
@@ -84,7 +85,8 @@ server <- function(input, output, session) {
           setNames(c("mainValues", "extraValues",  "intermediateValues","terminalValues", "CAPMvalues")) |> 
           list2env(envir = sys.frame())
         
-        allValues <- reactive(c(mainValues(), extraValues(), CAPMvalues()))
+        #isolated values that don't need to change frequently
+        isoValues <- reactive(c(CAPMvalues(), mainValues(), extraValues())) |> isolate()
         
         # calcValues <- reactive({get(type(), as.environment(calcVals))})
         
@@ -161,13 +163,12 @@ server <- function(input, output, session) {
             Map(\(x,y) {column(4, numericVInput(x,y))}, extraValues(), names(extraValues()))
           })
           
-        }) |> 
-          bindEvent(stage())
+        })
 
         
         #call the numeric Output functions in server
-        firstList <- reactive(Map(numericVServer, allValues(), names(allValues()), 0) |> 
-                            setNames(paste0(allValues(), "_nInput")))
+        firstList <- reactive(Map(numericVServer, isoValues(), names(isoValues()), 0) |> 
+                            setNames(paste0(isoValues(), "_nInput")))
         
         secondList <- reactive(Map(numericVServer, terminalValues(), names(terminalValues()), 0) |> 
                                  setNames(paste0(terminalValues(), "_nInput")))
@@ -176,7 +177,7 @@ server <- function(input, output, session) {
                                  setNames(paste0(intermediateValues(), "_nInput")))
         
         #Numbers of first,second and third stage reactive values (they are called in the lapply)
-        firstNumbers <- reactive({lapply(firstList(), \(x) x())})
+        firstNumbers <- reactive({lapply(firstList(), \(x) x())}) 
         secondNumbers <- reactive({lapply(secondList(), \(x) x())})
         thirdNumbers <- reactive({lapply(thirdList(), \(x) x())})
         
@@ -184,7 +185,7 @@ server <- function(input, output, session) {
         
         #main data all graphs and functions use and display
         myData = reactive(
-          rlang::inject(transitionTable(tabl =rlang::inject(pvTable(name = names(allValues()), stage = stage(), !!!firstNumbers())),
+          rlang::inject(transitionTable(tabl =rlang::inject(pvTable(name = names(isoValues()), stage = stage(), !!!firstNumbers())),
                           stage  = stage(),
                           !!!allNumbers()))
           )
@@ -206,7 +207,7 @@ server <- function(input, output, session) {
 #---------------------------------------Plots----------------------------------------------------------------        
         
         output$plot <- renderEcharts4r({
-          if(input$tabset == "Plot"){
+          if(input$tabset == "Present Values"){
             pvPlot(myData())
           }
         }) |> 
@@ -218,7 +219,7 @@ server <- function(input, output, session) {
           lrow <- fncol(myData())
           
           if(input$tabset == "Terminal"){
-            plotData <- rlang::inject(perpValue(names(allValues()), myData(), stage = stage(), !!!c(firstNumbers(), secondNumbers(), thirdNumbers())))
+            plotData <- rlang::inject(perpValue(names(isoValues()), myData(), stage = stage(), !!!c(firstNumbers(), secondNumbers(), thirdNumbers())))
             
             terminalPlot(plotData$firstStage, plotData$secondStage, stage = stage(), total = plotData$total)
           }
