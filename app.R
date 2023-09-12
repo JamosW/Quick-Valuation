@@ -1,12 +1,3 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
 library(DT)
 source("modules.R")
@@ -243,33 +234,3 @@ server <- function(input, output, session) {
 } 
 # Run the application 
 shinyApp(ui , server)
-
-
-
-####Immediate#######
-#fix bug with transitioning from ddm to fcfe and error occuring
-#make terminal stage greyed out in three stage model
-
-
-
-
-
-#add a value of growth chart pg(338)
-#plots working for both tables
-#perhaps change to material page
-#perhaps tabset within a tabset(growth stage and terminal stage each having plot and table)
-#mathematical forumala shown (latex)
-#tooltips for users or perhaps a glossary
-#source material and links like damodaran ERP site
-#update plots axis and names
-#max timeSpan 100
-#CSS styling
-#manual mode (first one) (assissted mode, company lookup)
-#package button. To package the data in csv format, and images in a folder
-
-#change the numeric input to percentage for certain fields
-
-
-#slow down when switching between ddm and fcfe and terminal plot panel
-#add the functionality to download the graph
-#module for the amount of tab panels
