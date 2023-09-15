@@ -6,7 +6,6 @@ library(profvis)
 library(shinyWidgets)
 library(excelR)
 
-
 # Define UI for application that draws a histogram
 ui <- function(title){
   
@@ -57,21 +56,16 @@ ui <- function(title){
 server <- function(input, output, session) {
         
         #based on button, we get the type of Valuation model in str format
-        
   
         type <- radioBServer("mdl")
-        
         stage <- radioBServer("stage")
-        
-        
+  
         lapply(list(getVars("mainL"), getVars("extraL"), getVars("intermediateL"), getVars("terminalL"), getVars("CAPM")), \(x){
           reactive({
             switch(type(),
                    "DDM" = get("DDM", as.environment(x)),
                    "FCFE" =  get("FCFE", as.environment(x)),
-                   "FCFF" =  get("FCFF", as.environment(x)))
-            
-          })
+                   "FCFF" =  get("FCFF", as.environment(x)))})
         }) |> 
           setNames(c("mainValues", "extraValues",  "intermediateValues","terminalValues", "CAPMvalues")) |> 
           list2env(envir = sys.frame())
@@ -84,11 +78,9 @@ server <- function(input, output, session) {
         output$title <- renderUI({
           div(titlePanel(type()), align = "center")
         })
-        
 
 #all components that are react to a change in stage       
         observe({
-          
           costs <- reactive({
   
               list("CAPM", CAPMvalues()) |> 
@@ -152,11 +144,9 @@ server <- function(input, output, session) {
           #numeric input for the dropdown (extra panel)
           output$extras <- renderUI({
             Map(\(x,y) {column(4, numericVInput(x,y))}, extraValues(), names(extraValues()))
-          })
-          
+          }) 
         })
-
-        
+          
         #call the numeric Output functions in server
         firstList <- reactive(Map(numericVServer, isoValues(), names(isoValues()), 0) |> 
                             setNames(paste0(isoValues(), "_nInput")))
@@ -184,7 +174,6 @@ server <- function(input, output, session) {
         format <- reactive({input$tableFormat})
         
 #----------------------------------------Table--------------------------------------------------------------
-        
         output$table <- renderUI({if(format()) {
           renderExcel({
             data =  cbind("input" = rownames(myData()), myData())
@@ -196,7 +185,6 @@ server <- function(input, output, session) {
           }) 
 
 #---------------------------------------Plots----------------------------------------------------------------        
-        
         output$plot <- renderEcharts4r({
           if(input$tabset == "Present Values"){
             pvPlot(myData())
@@ -204,6 +192,7 @@ server <- function(input, output, session) {
         }) |> 
           bindCache(allNumbers()) |> 
           bindEvent(allNumbers())
+          
 ########################################      Terminal Plot       ###############################################################        
         output$terminal <- renderEcharts4r({
           lcol <- fncol(myData())
@@ -217,20 +206,16 @@ server <- function(input, output, session) {
         }) |> 
           bindCache(allNumbers()) |> 
           bindEvent(allNumbers())
-        
+          
 ######################################    Hypothetical Graph    #######################################################################        
-       
          output$hypothetical <- renderEcharts4r({
           if(input$tabset == "Hypothetical"){
             rlang::inject(hypoGraph(myData(), stage(), !!!c(firstNumbers(), secondNumbers())))
           }
         }) |> 
           bindCache(allNumbers()) |> 
-          bindEvent(allNumbers())
-        
-        
+        bindEvent(allNumbers())
 ############################################################################################################
-        
 } 
 # Run the application 
 shinyApp(ui , server)
