@@ -6,6 +6,7 @@ library(profvis)
 library(shinyWidgets)
 library(excelR)
 
+
 # Define UI for application that draws a histogram
 ui <- function(title){
   
@@ -22,7 +23,6 @@ ui <- function(title){
         radioUI("stage", "Stages:", c("One", "Two", "Three")),
         fluidRow(
           width = 4,
-          textOutput("allo"),
           uiOutput("capm")),
         fluidRow(
           width = 4,
@@ -56,40 +56,46 @@ ui <- function(title){
 server <- function(input, output, session) {
         
         #based on button, we get the type of Valuation model in str format
+        
   
         type <- radioBServer("mdl")
+        
         stage <- radioBServer("stage")
-  
+        
+        #get names as reactive
         lapply(list(getVars("mainL"), getVars("extraL"), getVars("intermediateL"), getVars("terminalL"), getVars("CAPM")), \(x){
           reactive({
             switch(type(),
                    "DDM" = get("DDM", as.environment(x)),
                    "FCFE" =  get("FCFE", as.environment(x)),
-                   "FCFF" =  get("FCFF", as.environment(x)))})
+                   "FCFF" =  get("FCFF", as.environment(x)))
+            
+          })
         }) |> 
-          setNames(c("mainValues", "extraValues",  "intermediateValues","terminalValues", "CAPMvalues")) |> 
+          setNames(c("mainNames", "extraNames",  "intermediateNames","terminalNames", "capmNames")) |> 
           list2env(envir = sys.frame())
         
-        #isolated values that don't need to change frequently
-        isoValues <- reactive(c(CAPMvalues(), mainValues(), extraValues())) |> isolate()
+        isoValues <- reactive(c(capmNames(), mainNames(), extraNames()))
         
         # calcValues <- reactive({get(type(), as.environment(calcVals))})
         
         output$title <- renderUI({
           div(titlePanel(type()), align = "center")
         })
+        
 
 #all components that are react to a change in stage       
         observe({
+          
           costs <- reactive({
   
-              list("CAPM", CAPMvalues()) |> 
+              list("CAPM", capmNames()) |> 
               setNames(list("title", "capmV"))
           })
           
           #values for first stage
           firstStage <- reactive({
-            main = mainValues()
+            main = mainNames()
             (if(stage() != "One") { 
               list("Stage One", main)
             }  else {
@@ -102,9 +108,9 @@ server <- function(input, output, session) {
           
           secondStage <- reactive({
             (if(stage() == "Two") { 
-              list("Terminal Stage", terminalValues())
+              list("Terminal Stage", terminalNames())
             }  else if(stage() == "Three") {
-              list("Declining Stage", intermediateValues())
+              list("Declining Stage", intermediateNames())
             } else {
               list(NULL, NULL)
             }) |> 
@@ -113,7 +119,7 @@ server <- function(input, output, session) {
           
           thirdStage <- reactive({
             (if(stage() == "Three") { 
-              list("Terminal Stage", terminalValues())
+              list("Terminal Stage", terminalNames())
             } else {
               list(NULL, NULL)
             }) |> 
@@ -143,19 +149,20 @@ server <- function(input, output, session) {
           
           #numeric input for the dropdown (extra panel)
           output$extras <- renderUI({
-            Map(\(x,y) {column(4, numericVInput(x,y))}, extraValues(), names(extraValues()))
-          }) 
-        })
+            Map(\(x,y) {column(4, numericVInput(x,y))}, extraNames(), names(extraNames()))
+          })
           
+        })
+
         #call the numeric Output functions in server
         firstList <- reactive(Map(numericVServer, isoValues(), names(isoValues()), 0) |> 
                             setNames(paste0(isoValues(), "_nInput")))
         
-        secondList <- reactive(Map(numericVServer, terminalValues(), names(terminalValues()), 0) |> 
-                                 setNames(paste0(terminalValues(), "_nInput")))
+        secondList <- reactive(Map(numericVServer, terminalNames(), names(terminalNames()), 0) |> 
+                                 setNames(paste0(terminalNames(), "_nInput")))
         
-        thirdList <- reactive(Map(numericVServer, intermediateValues(), names(intermediateValues()), 0) |> 
-                                 setNames(paste0(intermediateValues(), "_nInput")))
+        thirdList <- reactive(Map(numericVServer, intermediateNames(), names(intermediateNames()), 0) |> 
+                                 setNames(paste0(intermediateNames(), "_nInput")))
         
         #Numbers of first,second and third stage reactive values (they are called in the lapply)
         firstNumbers <- reactive({lapply(firstList(), \(x) x())}) 
@@ -164,58 +171,63 @@ server <- function(input, output, session) {
         
         allNumbers <- reactive({c(firstNumbers(), secondNumbers(), thirdNumbers())})
         
+        first_table = reactive({
+          rlang::inject(pvTable(name = names(isoValues()), stage = stage(), !!!firstNumbers()))
+        })
+        
         #main data all graphs and functions use and display
-        myData = reactive(
-          rlang::inject(transitionTable(tabl =rlang::inject(pvTable(name = names(isoValues()), stage = stage(), !!!firstNumbers())),
-                          stage  = stage(),
-                          !!!allNumbers()))
+        merged_table = reactive(
+          rlang::inject(transitionTable(tabl =first_table(),stage  = stage(),!!!allNumbers()))
           )
         
         format <- reactive({input$tableFormat})
         
 #----------------------------------------Table--------------------------------------------------------------
+        
         output$table <- renderUI({if(format()) {
           renderExcel({
-            data =  cbind("input" = rownames(myData()), myData())
+            data =  cbind("input" = rownames(merged_table()), merged_table())
             excelTable(data =  data, title = fncol(data), colHeaders = LETTERS[seq_col(data)], autoColTypes = F, pagination = 10)
           })
         } else {
-          renderDT(myData())
+          renderDT(merged_table())
         }
           }) 
 
 #---------------------------------------Plots----------------------------------------------------------------        
+        
         output$plot <- renderEcharts4r({
           if(input$tabset == "Present Values"){
-            pvPlot(myData())
+            pvPlot(merged_table())
           }
         }) |> 
-          bindCache(allNumbers()) |> 
           bindEvent(allNumbers())
-          
 ########################################      Terminal Plot       ###############################################################        
         output$terminal <- renderEcharts4r({
-          lcol <- fncol(myData())
-          lrow <- fncol(myData())
           
           if(input$tabset == "Terminal"){
-            plotData <- rlang::inject(perpValue(names(isoValues()), myData(), stage = stage(), !!!c(firstNumbers(), secondNumbers(), thirdNumbers())))
+            plotData <- rlang::inject(perpValue(names(isoValues()), merged_table(), stage = stage(), !!!c(firstNumbers(), secondNumbers(), thirdNumbers())))
             
             terminalPlot(plotData$firstStage, plotData$secondStage, stage = stage(), total = plotData$total)
           }
         }) |> 
-          bindCache(allNumbers()) |> 
+
           bindEvent(allNumbers())
-          
+        
 ######################################    Hypothetical Graph    #######################################################################        
+       
          output$hypothetical <- renderEcharts4r({
           if(input$tabset == "Hypothetical"){
-            rlang::inject(hypoGraph(myData(), stage(), !!!c(firstNumbers(), secondNumbers())))
+            rlang::inject(hypoGraph(merged_table(), stage(), !!!c(firstNumbers(), secondNumbers())))
           }
         }) |> 
-          bindCache(allNumbers()) |> 
-        bindEvent(allNumbers())
+          bindEvent(allNumbers())
+        
+        
 ############################################################################################################
+        
 } 
 # Run the application 
 shinyApp(ui , server)
+
+

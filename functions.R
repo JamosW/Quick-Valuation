@@ -152,7 +152,7 @@ transitionTable <- function(tabl, stage, ...){
         pv <- dividends/coe
         
         #arguments to bind to matrix
-        firstBind <- list(dividends, newIncome, shares, x$rf_nInput, x$beta_nInput, x$erp_nInput,  newGrowth, timeSpan)
+        firstBind <- list(x$rf_nInput, x$beta_nInput, x$erp_nInput, dividends, newIncome, shares,newGrowth, timeSpan)
         thirdBind <- list(newPayout, pv)
         
         list(firstBind = firstBind, secondBind = secondBind, thirdBind = thirdBind)
@@ -169,7 +169,7 @@ transitionTable <- function(tabl, stage, ...){
           # a = list("EPS" = eps, "COE" = coe, "FCFE" = fcfe, "ROE" = ROE, "Exp Growth" = fGrowth,  "cEqRR" = eq_Reinv, "Present Value" = pv)
           
           #~~~~~~~~~~~~~~~~~~~~~~~maybe try append route
-          firstBind <- list(newIncome, newCapex, newCwC,newMeqRR, shares, x$rf_nInput, x$beta_nInput, x$erp_nInput, newGrowth, timeSpan)
+          firstBind <- list(x$rf_nInput, x$beta_nInput, x$erp_nInput, newIncome, newCapex, newCwC, newMeqRR, shares, newGrowth, timeSpan)
           thirdBind <- list(fcfe,  roe, newExGrowth, newC_eqRR, pv)
           
           list(firstBind = firstBind, secondBind = secondBind, thirdBind = thirdBind, extras = extras, default = c(list(newGrowth), as.list(vec[-1])))
@@ -190,7 +190,7 @@ transitionTable <- function(tabl, stage, ...){
         newCOC <- changeFunc(vec["Cost of Capital"], x$d_coc_nInput, timeSpan) 
         pv <- fcff/newCOC
         
-        firstBind <- list(newMktCap, newEBIT, newTaxRate, newDebt, newCOD, newCash, newRR, newCapex, newCwC, shares, x$rf_nInput, x$beta_nInput, x$erp_nInput, newGrowth, timeSpan)
+        firstBind <- list(x$rf_nInput, x$beta_nInput, x$erp_nInput, newMktCap, newEBIT, newTaxRate, newDebt, newCOD, newCash, newRR, newCapex, newCwC, shares, newGrowth, timeSpan)
         second <- list(coe, newCOC)
         thirdBind <- list(fcff, pv)
         
@@ -513,13 +513,12 @@ hypoGraph <- function(tabl, stage, ...){
         switch (stage,
                 One = terminalValue,
                 {
-                  
                   pvPerShare + terminalValue
                 })
         }
       
       df <- if(length(value)) data.frame(growth_rate = gRates, value = value)[is.finite(value), ] else data.frame(growth_rate = gRates, value = 0)
-
+      
       return(df)
     
       })()
@@ -536,7 +535,6 @@ hypoGraph <- function(tabl, stage, ...){
     })()
   
 }
-
 
 # -------------------------------------------------------------------------------------------------------------
 #variable names and values that are used by multiple functions, mostly for numeric inputs
@@ -620,5 +618,6 @@ tooltipValues <- function(title){
   
   return(val)
 }
+
 
 
