@@ -16,13 +16,11 @@ numericVServer <- function(id, lbl, val) {
     id,
     function(input, output, session) {
       bins = reactive(input$nInput)
-      
       return(bins)
       
     }
   )
 }
-
 
 
 radioUI <- function(id, label, choices) {
@@ -48,7 +46,6 @@ radioBServer <- function(id){
     }
   )
 }
-
 
 
 

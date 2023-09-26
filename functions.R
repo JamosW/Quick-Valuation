@@ -38,8 +38,8 @@ pvTable <- function(name, stage, ...){
       coe <- `^`((1 + baseCOE), timeSpan)
 
 
-      eps <- discount * (x$net_inc_nInput / x$numShares_nInput)
-      dps <- discount * (x$dividends_nInput / x$numShares_nInput)
+      eps <- discount * (x$net_inc_nInput / x$shares_nInput)
+      dps <- discount * (x$dividends_nInput / x$shares_nInput)
       # reinv <- ((x$capEx_nInput - x$depreciation_nINput) - cwc_nInput)
       
       #function that alters x Variables based on the growth rate
@@ -82,12 +82,12 @@ pvTable <- function(name, stage, ...){
               
             calcValss <- paste0(c("capEx", "depreciation", "cwc", "debt_iss", "ebit"), "_nInput")
             x <- alterX(x, calcValss)
-            EBI <- (x$ebit_nInput * (1 - x$taxRate_nInput))
+            EBI <- (x$ebit_nInput * (1 - x$tax_rate_nInput))
             #if we want to manually enter a value for the reinvestment rate or use the calculation (EBI  * (1 - x$reinvR_nInput) - totalReinvestments(x))
             fcff <- if(length(x$reinvR_nInput) && is.finite(x$reinvR_nInput) && x$reinvR_nInput > 0) EBI - (EBI * x$reinvR_nInput) else EBI  * (1 - x$reinvR_nInput) - totalReinvestments(x)
             total_debt <- x$debt_nInput
             debt_to_capital <- total_debt/(total_debt + x$market_cap_nInput)
-            CoC <- `^`((1 + ((baseCOE * (1 - debt_to_capital)) + (x$cod_nInput * (1 - x$taxRate_nInput) * debt_to_capital))), timeSpan)
+            CoC <- `^`((1 + ((baseCOE * (1 - debt_to_capital)) + (x$cod_nInput * (1 - x$tax_rate_nInput) * debt_to_capital))), timeSpan)
             pv <- fcff / CoC
             #terminal Value - value_of_operating_assets + x$cash_nInput - total_debt
            
@@ -354,7 +354,7 @@ terminalCalculator <- function(type, stage, tabl, xVal, gr){
           "FCFF" =
             {
               tEBIT <- grabValue("EBIT", tabl)
-              tFCFF <- tEBIT * (1 - xVal$taxRate_nInput) * (1 + gr) * (1 - xVal$t_rr_nInput)
+              tFCFF <- tEBIT * (1 - xVal$tax_rate_nInput) * (1 + gr) * (1 - xVal$t_rr_nInput)
 
               (tFCFF/(xVal$t_coc_nInput - gr))/grabValue("Cost of Capital", tabl)
             }
@@ -547,14 +547,14 @@ getVars <- function(name){
   CAPM = rep(list(capm), 3) |> 
     setNames(list("DDM", "FCFE", "FCFF"))
   
-  sharedMain = c("#Shares" = "numShares","GR" = "gr", "Time Span" = "tspan")
+  sharedMain = c("#Shares" = "shares","GR" = "gr", "Time Span" = "tspan")
   
   sharedCashFlowMain <- c("CapEx" = "capEx", "Change Wk Cap" = "cwc")
   
   
   mainL = list(DDM = c("Dividends" = "dividends", "Net Income" = "net_inc", sharedMain),
                FCFE = c("Net Income" = "net_inc", sharedCashFlowMain, "m_EqRR" = "reinv", sharedMain),
-               FCFF = c("Market Cap" = "market_cap", "EBIT" = "ebit", "Tax Rate" = "taxRate", "Debt" = "debt", "COD" = "cod", "Cash" = "cash", "m_ReinvRate" = "reinvR", sharedCashFlowMain,  sharedMain))
+               FCFF = c("Market Cap" = "market_cap", "EBIT" = "ebit", "Tax Rate" = "tax_rate", "Debt" = "debt", "COD" = "cod", "Cash" = "cash", "m_ReinvRate" = "reinvR", sharedCashFlowMain,  sharedMain))
   
   extraL = list(DDM = c(),
                 FCFE = c( "Depreciation" = "depreciation", "Debt Iss" = "debt_iss", 
@@ -618,6 +618,17 @@ tooltipValues <- function(title){
   
   return(val)
 }
+
+#---------------------------------------------------------Python Functions---------------------------------------------
+
+
+
+  lookup <- paste0(c("capEx", "cash", "dividends", "cwc", "shares", "ebit", "net_inc", "tax_rate", "market_cap", "debt"), "-nInput") |>
+    setNames(c("CapitalExpenditure","CashAndCashEquivalents","CashDividendsPaid","ChangeInWorkingCapital",
+               "DilutedAverageShares","EBIT","NetIncome","TaxRateForCalcs", "MarketCap", "TotalDebt" ))
+
+
+
 
 
 
