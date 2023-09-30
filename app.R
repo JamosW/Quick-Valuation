@@ -68,7 +68,7 @@ server <- function(input, output, session) {
   stage <- radioBServer("stage")
         
         #get names as reactive
-  lapply(list(getVars("mainL"), getVars("extraL"), getVars("intermediateL"), getVars("terminalL"), getVars("CAPM")), \(x){
+  lapply(lapply(c("mainL", "intermediateL", "terminalL", "CAPM"), getVars), \(x){
     reactive({
       switch(type(),
              "DDM" = get("DDM", as.environment(x)),
@@ -77,10 +77,10 @@ server <- function(input, output, session) {
             
           })
     }) |> 
-    setNames(c("mainNames", "extraNames",  "intermediateNames","terminalNames", "capmNames")) |> 
+    setNames(c("mainNames", "intermediateNames","terminalNames", "capmNames")) |> 
     list2env(envir = sys.frame())
         
-  isoValues <- reactive(c(capmNames(), mainNames(), extraNames()))
+  isoValues <- reactive(c(capmNames(), mainNames()))
         
   # calcValues <- reactive({get(type(), as.environment(calcVals))})
         
@@ -160,11 +160,6 @@ server <- function(input, output, session) {
           Map(\(x,y) {column(4, numericVInput(x,y))}, thirdStage()$thirdV, names(thirdStage()$thirdV))
           )})
           
-          #numeric input for the dropdown (extra panel)
-          output$extras <- renderUI({
-            Map(\(x,y) {column(4, numericVInput(x,y))}, extraNames(), names(extraNames()))
-            })
-          
         })
   
   #call the numeric Output functions in server
@@ -184,15 +179,16 @@ server <- function(input, output, session) {
   
   allNumbers <- reactive({c(firstNumbers(), secondNumbers(), thirdNumbers())})
   
-  first_table = reactive({
+  first_table <- reactive({
     rlang::inject(pvTable(name = names(isoValues()), stage = stage(), !!!firstNumbers()))
     })
   
+
   #main data all graphs and functions use and display
-  merged_table = reactive(
+  merged_table <- reactive({
     rlang::inject(transitionTable(tabl =first_table(),stage  = stage(),!!!allNumbers()))
-    )
-  
+    })
+
   format <- reactive({input$tableFormat})
   
   observe({
@@ -210,6 +206,8 @@ server <- function(input, output, session) {
 
 #----------------------------------------Table--------------------------------------------------------------
   output$table <- renderUI({if(format()) {
+    
+    
     renderExcel({
       data =  cbind("input" = rownames(merged_table()), merged_table())
       excelTable(data =  data, title = fncol(data), colHeaders = LETTERS[seq_col(data)], autoColTypes = F, pagination = 10)

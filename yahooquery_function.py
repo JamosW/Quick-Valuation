@@ -8,7 +8,7 @@ def get_financials(ticker):
     all_data = stock.all_financial_data()
     
     if(type(all_data) != str):
-        required_metrics = ["CashDividendsPaid", "NetIncome", "DilutedAverageShares", "CapitalExpenditure", "ChangeInWorkingCapital", "EBIT", "TaxRateForCalcs", "CashAndCashEquivalents", "MarketCap", "TotalDebt"]
+        required_metrics = ["CashDividendsPaid", "NetIncome", "DilutedAverageShares", "CapitalExpenditure", "ChangeInWorkingCapital", "EBIT", "TaxRateForCalcs", "CashAndCashEquivalents", "MarketCap", "TotalDebt", "DepreciationAndAmortization", "RepaymentOfDebt", "TangibleBookValue"]
         columns = all_data.columns
     
         #metrics found that can be used
@@ -18,7 +18,7 @@ def get_financials(ticker):
         #return the first row, which will be in matrix format in R
         mat = ((all_data.loc[:, found_mets].iloc[all_data.shape[0] - 1, :]))
         
-        mat[mat.index.isin(["CapitalExpenditure", "CashDividendsPaid"])] = mat[mat.index.isin(["CapitalExpenditure", "CashDividendsPaid"])].abs()
+        mat[mat.index.isin(["CapitalExpenditure", "CashDividendsPaid", "RepaymentOfDebt","ChangeInWorkingCapital"])] = mat[mat.index.isin(["CapitalExpenditure", "CashDividendsPaid", "RepaymentOfDebt","ChangeInWorkingCapital"])].abs()
         
         #get series on per share basis, to do that we don't tuch taxRate
         not_tax_mets = mat[mat.index != "TaxRateCalcs"]

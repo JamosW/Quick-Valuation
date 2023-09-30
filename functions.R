@@ -89,10 +89,7 @@ pvTable <- function(name, stage, ...){
             debt_to_capital <- total_debt/(total_debt + x$market_cap_nInput)
             CoC <- `^`((1 + ((baseCOE * (1 - debt_to_capital)) + (x$cod_nInput * (1 - x$tax_rate_nInput) * debt_to_capital))), timeSpan)
             pv <- fcff / CoC
-            #terminal Value - value_of_operating_assets + x$cash_nInput - total_debt
-           
-            
-            
+
             #variables to bind
             tobind <- list("COE" = coe, "Cost of Capital" = CoC, "FCFF" = fcff, "Present Value" = pv)
           }
@@ -143,7 +140,7 @@ transitionTable <- function(tabl, stage, ...){
       eps <- newIncome / shares
       coeChange <- changeFunc((myTabl["COE", ][1]) - 1, x$d_coe_nInput, timeSpan)
       coe <- vec["COE"] * cumprod(1 + coeChange)
-      secondBind <- list(eps, coe)
+      equity <- list(eps, coe)
       
       bindList <- if(div){
         
@@ -155,13 +152,22 @@ transitionTable <- function(tabl, stage, ...){
         firstBind <- list(x$rf_nInput, x$beta_nInput, x$erp_nInput, dividends, newIncome, shares,newGrowth, timeSpan)
         thirdBind <- list(newPayout, pv)
         
-        list(firstBind = firstBind, secondBind = secondBind, thirdBind = thirdBind)
-      } else  if(fCashFlowE){
+        list(firstBind = firstBind, secondBind = equity, thirdBind = thirdBind)
+      
+        } else {
+        
+        dep <- vec["Depreciation"]
+        debt_issued <- vec["Debt Iss"]
+        debt_paid <- vec["Debt Paid"]
+        book_val <- vec["Book Value"]
+        extraVals <- list(dep, debt_issued, debt_paid, book_val)
+        
+        if(fCashFlowE){
         #not necessary to project capex, so kept NA in transition period
           newMeqRR <- changeFunc(vec["m_EqRR"], x$d_eq_rr_nInput, timeSpan)
-          extras <- names(getVars("extraL")$FCFE)
+          # extras <- names(getVars("extraL")$FCFE)
           fcfe <- newIncome - (newIncome * newMeqRR)
-          bValue <- changeFunc(vec["Book Val"], (vec["Book Val"] + cumsum(fcfe)), timeSpan)
+          bValue <- changeFunc(book_val, (book_val + cumsum(fcfe)), timeSpan)
           roe <- newIncome / bValue
           newC_eqRR <- (1 - (fcfe/newIncome))
           newExGrowth <- roe * newC_eqRR
@@ -170,104 +176,74 @@ transitionTable <- function(tabl, stage, ...){
           
           #~~~~~~~~~~~~~~~~~~~~~~~maybe try append route
           firstBind <- list(x$rf_nInput, x$beta_nInput, x$erp_nInput, newIncome, newCapex, newCwC, newMeqRR, shares, newGrowth, timeSpan)
-          thirdBind <- list(fcfe,  roe, newExGrowth, newC_eqRR, pv)
+          fourthBind <- list(fcfe,  roe, newExGrowth, newC_eqRR, pv)
           
-          list(firstBind = firstBind, secondBind = secondBind, thirdBind = thirdBind, extras = extras, default = c(list(newGrowth), as.list(vec[-1])))
+          list(firstBind = firstBind, secondBind = extraVals, thirdBind = equity, fourthBind = fourthBind)
 
-      } else {
-        
-        newMktCap <- NaN
-        newDebt <- NaN
-        newCOD <- NaN
-        newCash <- NaN
-        extras <- names(getVars("extraL")$FCFF)
-        #assumes the tax Rate doesn't change
-        newTaxRate <- vec["Tax Rate"]
-        newEBIT <- vec["EBIT"] * cumprod(1 + newGrowth)
-        newRR <- changeFunc(vec["m_ReinvRate"], x$d_ReinvR_nInput, timeSpan)
-        newEBI <- newEBIT * (1 - newTaxRate)
-        fcff <- newEBI - (newEBI * newRR)
-        newCOC <- changeFunc(vec["Cost of Capital"], x$d_coc_nInput, timeSpan) 
-        pv <- fcff/newCOC
-        
-        firstBind <- list(x$rf_nInput, x$beta_nInput, x$erp_nInput, newMktCap, newEBIT, newTaxRate, newDebt, newCOD, newCash, newRR, newCapex, newCwC, shares, newGrowth, timeSpan)
-        second <- list(coe, newCOC)
-        thirdBind <- list(fcff, pv)
-        
-        list(firstBind = firstBind, secondBind = second, thirdBind = secondBind, extras = extras)
+        } else {
+          
+          newMktCap <- NaN
+          newDebt <- NaN
+          newCOD <- NaN
+          newCash <- NaN
+          # extras <- names(getVars("extraL")$FCFF)
+          #assumes the tax Rate doesn't change
+          newTaxRate <- vec["Tax Rate"]
+          newEBIT <- vec["EBIT"] * cumprod(1 + newGrowth)
+          newRR <- changeFunc(vec["m_ReinvRate"], x$d_ReinvR_nInput, timeSpan)
+          newEBI <- newEBIT * (1 - newTaxRate)
+          fcff <- newEBI - (newEBI * newRR)
+          newCOC <- changeFunc(vec["Cost of Capital"], x$d_coc_nInput, timeSpan) 
+          pv <- fcff/newCOC
+          
+          firstBind <- list(x$rf_nInput, x$beta_nInput, x$erp_nInput, newMktCap, newEBIT, newTaxRate, newDebt, newCOD, newCash, newRR, newCapex, newCwC, shares, newGrowth, timeSpan)
+          lastBind <- list(coe, newCOC, fcff, pv)
+          
+          list(firstBind = firstBind, secondBind = extraVals, thirdBind = lastBind)
+          }
       }
       
-      #if extra variables are loaded
-      vals <-  if(all(bindList$extras %in% names(vec))) {
-        
-        #return for dividends valuation
-        dividend_values <- c(bindList$firstBind, secondBind, bindList$thirdBind)
-        if(div) {
-          dividend_values
-        } else if(fCashFlowE) {
+      # #if extra variables are loaded
+      # vals <-  if(all(bindList$extras %in% names(vec))) {
+      #   
+      #   #return for dividends valuation
+      #   dividend_values <- c(bindList$firstBind, secondBind, bindList$thirdBind)
+      #   if(div) {
+      #     dividend_values
+      #   } else if(fCashFlowE) {
+      #     
+      #     rlang::inject(c(bindList$firstBind, !!!vec[bindList$extras], secondBind, bindList$thirdBind))
+      #   } else {
+      #     #modified second bind, eps replaced with coc
+      #     rlang::inject(c(bindList$firstBind, !!!vec[bindList$extras], bindList$secondBind, bindList$thirdBind))
+      #     }
+      # 
+      # } else {
+      
+        vals <- if(div){
           
-          rlang::inject(c(bindList$firstBind, !!!vec[bindList$extras], secondBind, bindList$thirdBind))
+          c(bindList$firstBind, equity, bindList$thirdBind)
+        
         } else {
-          #modified second bind, eps replaced with coc
-          rlang::inject(c(bindList$firstBind, !!!vec[bindList$extras], bindList$secondBind, bindList$thirdBind))
-          }
-
-      } else {
-        
-        if(div){
+            
+          c(bindList$firstBind, bindList$secondBind, bindList$thirdBind, bindList$fourthBind)
           
-          dividend_values
-        
-          } 
-        
-        else if(fCashFlowE) {
-          
-          if(!is.na(vec["CapEx"])) {
-            meRR <- vec["m_EqRR"]
-            
-            #is not NA and greater than 0
-            if(!is.na(meRR) & meRR) {
-              c(bindList$firstBind, bindList$thirdBind)
-            } else {
-              c(bindList$firstBind, secondBind)
-            }
-            
-          } else {
-            bindList$default
-          }
-
-        } 
-        
-        else {
-          
-          if(!is.na(vec["CapEx"])) {
-            mRR <- vec["m_ReinvRate"]
-            
-            #is not NA and greater than 0
-            if(!is.na(mRR) & mRR) {
-              c(bindList$firstBind, bindList$second, bindList$thirdBind)
-            } else {
-              c(bindList$firstBind, bindList$second)
-            }
-            
-          } else {
-            bindList$default
-          }
         }
-
-      }
       
       mat <- do.call(rbind, vals)
       
-      
+      #print(list(mat, myTabl))
       dimnames(mat) <- list(NULL, if(t) paste0("D", seq_len(t)) else "D1")
+      
+      #Shiny throws an error because cbind is ran before the table updates, which throws an error
+        
+        cbind(myTabl, mat) |>
+          (\(x){
+            x[] <- sapply(x, round, digits = 4)
+            x
+          })()
 
-      cbind(myTabl, mat) |>
-        (\(x){
-          x[] <- sapply(x, round, digits = 4)
-          x
-        })()
-    
+
     } else { myTabl |> 
           (\(x){
             x[] <- sapply(x, round, digits = 4)
@@ -383,7 +359,7 @@ terminalCalculator <- function(type, stage, tabl, xVal, gr){
 #PV of stock in perpetuity
 perpValue <- function(name, tabl, stage, ...){
   one <- stage == "One"
-
+  print(tabl)
   pvPerShare <- sum(grabValue("Present Value",tabl, which = seq_col(tabl)))/grabValue("#Shares", tabl)
   
   list(...) |>
@@ -551,17 +527,20 @@ getVars <- function(name){
   
   sharedCashFlowMain <- c("CapEx" = "capEx", "Change Wk Cap" = "cwc")
   
+  extraMain <- c( "Depreciation" = "depreciation", "Debt Iss" = "debt_iss", 
+               "Debt Paid" = "debt_paid", "Book Value" =  "book_val")
+  
   
   mainL = list(DDM = c("Dividends" = "dividends", "Net Income" = "net_inc", sharedMain),
-               FCFE = c("Net Income" = "net_inc", sharedCashFlowMain, "m_EqRR" = "reinv", sharedMain),
-               FCFF = c("Market Cap" = "market_cap", "EBIT" = "ebit", "Tax Rate" = "tax_rate", "Debt" = "debt", "COD" = "cod", "Cash" = "cash", "m_ReinvRate" = "reinvR", sharedCashFlowMain,  sharedMain))
+               FCFE = c("Net Income" = "net_inc", sharedCashFlowMain, "m_EqRR" = "reinv", sharedMain, extraMain),
+               FCFF = c("Market Cap" = "market_cap", "EBIT" = "ebit", "Tax Rate" = "tax_rate", "Debt" = "debt", "COD" = "cod", "Cash" = "cash", "m_ReinvRate" = "reinvR", sharedCashFlowMain,  sharedMain, extraMain))
   
-  extraL = list(DDM = c(),
-                FCFE = c( "Depreciation" = "depreciation", "Debt Iss" = "debt_iss", 
-                         "Debt Paid" = "debt_paid", "Book Val" =  "book_val"),
-                FCFF = c("Depreciation" = "depreciation", "Debt Iss" = "debt_iss", 
-                         "Debt Paid" = "debt_paid", "Book Val" =  "book_val"))
-  
+  # extraL = list(DDM = c(),
+  #               FCFE = c( "Depreciation" = "depreciation", "Debt Iss" = "debt_iss", 
+  #                        "Debt Paid" = "debt_paid", "Book Val" =  "book_val"),
+  #               FCFF = c("Depreciation" = "depreciation", "Debt Iss" = "debt_iss", 
+  #                        "Debt Paid" = "debt_paid", "Book Val" =  "book_val"))
+  # 
   sharedTerminal <- c("T_growth" = "t_growth")
   
   #values that are calculated that will show up in table but not in the numeric input
@@ -613,6 +592,10 @@ tooltipValues <- function(title){
                 "m_EqRR" = "Equity Reinvestment Rate - It is automatically calculated but you can provide one manually",
                 "CapEx" = "Capital Expenditures",
                 "Change Wk Cap" = "Change in working capital",
+                "Depreciation" = "Depreciation and Ammortization",
+                "Debt Iss" = "Debt Issued",
+                "Debt Paid" = "Debt paid back",
+                "Bool Value" = "Value of assets - liabilities",
                 "Chicken"
   )
   
@@ -623,9 +606,9 @@ tooltipValues <- function(title){
 
 
 
-  lookup <- paste0(c("capEx", "cash", "dividends", "cwc", "shares", "ebit", "net_inc", "tax_rate", "market_cap", "debt"), "-nInput") |>
+  lookup <- paste0(c("capEx", "cash", "dividends", "cwc", "shares", "ebit", "net_inc", "tax_rate", "market_cap", "debt", "depreciation", "debt_paid", "book_val"), "-nInput") |>
     setNames(c("CapitalExpenditure","CashAndCashEquivalents","CashDividendsPaid","ChangeInWorkingCapital",
-               "DilutedAverageShares","EBIT","NetIncome","TaxRateForCalcs", "MarketCap", "TotalDebt" ))
+               "DilutedAverageShares","EBIT","NetIncome","TaxRateForCalcs", "MarketCap", "TotalDebt", "DepreciationAndAmortization", "RepaymentOfDebt", "TangibleBookValue"))
 
 
 

@@ -9,7 +9,7 @@ PYTHON_DEPENDENCIES = 'yahooquery'
 
 my_future_function <- function(){
   
-  fut <- future({
+  fut <- future_promise({
     expr <- quote({
       use_virtualenv("tester", required = TRUE)
     })
