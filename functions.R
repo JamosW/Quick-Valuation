@@ -2,6 +2,7 @@ library(collapse)
 library(echarts4r)
 
 
+
 #get total Reinvestments
 totalReinvestments <- function(xVal){
   
@@ -595,7 +596,7 @@ tooltipValues <- function(title){
                 "Depreciation" = "Depreciation and Ammortization",
                 "Debt Iss" = "Debt Issued",
                 "Debt Paid" = "Debt paid back",
-                "Bool Value" = "Value of assets - liabilities",
+                "Book Value" = "Value of assets minus liabilities",
                 "Chicken"
   )
   

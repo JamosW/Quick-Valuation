@@ -6,6 +6,7 @@ library(DT)
 library(profvis)
 library(shinyWidgets)
 library(excelR)
+library(shinymaterial)
 
 # Define UI for application that draws a histogram
 ui <- function(title){
@@ -22,7 +23,6 @@ ui <- function(title){
         width = 4,
         radioUI("mdl", "Valuation Type: ", c("DDM", "FCFE", "FCFF")),
         radioUI("stage", "Stages:", c("One", "Two", "Three")),
-        verbatimTextOutput("allo"),
         fluidRow(
           width = 4,
           uiOutput("capm")),
@@ -191,30 +191,46 @@ server <- function(input, output, session) {
 
   format <- reactive({input$tableFormat})
   
+  #update numeric inputs when run is clicked
   observe({
     Map(\(x,y) updateNumericInput(session, x, value = y), lookup[match(names(results()[[1]]), names(lookup))], results()[[1]])
+    
     }) |>
     bindEvent(input$ticker_btn)
-        
-        # output$allo <- renderPrint({
-        #   subset_input <- Vectorize( function(inp, lookup) `[[`(input, lookup), vectorize.args = c("lookup"), SIMPLIFY = T)
-        #   match(subset_input(input, lookup) |> names(), names(lookup))
-        #   
-        #   
-        # })
-        
+  
+  #
+  observe({
+    updateNumericInput(session, "d_payout-nInput", value = input[["dividends-nInput"]]/input[["net_inc-nInput"]])
+    Map(\(x,y) updateNumericInput(session, x, value = input[[y]]), 
+        list("t_coe-nInput", "t_payout", "t_growth"), 
+        list("d_coe-nInput", "d_payout", "d_growth"))
+
+  })
+  
+  #update/invalidate COE only when capm variables change manually by user and 
+  observe({
+    updateNumericInput(session, "d_coe-nInput", value = input[["rf-nInput"]] + (input[["beta-nInput"]] * input[["erp-nInput"]]))
+  }) |> 
+    bindEvent(input[["rf-nInput"]], input[["beta-nInput"]], input[["erp-nInput"]])
+
 
 #----------------------------------------Table--------------------------------------------------------------
   output$table <- renderUI({if(format()) {
     
-    
     renderExcel({
+      
       data =  cbind("input" = rownames(merged_table()), merged_table())
       excelTable(data =  data, title = fncol(data), colHeaders = LETTERS[seq_col(data)], autoColTypes = F, pagination = 10)
+      
       })
+    
     } else {
+      
       renderDT(merged_table())
-      }}) 
+      }
+    
+    
+    }) 
 
 #---------------------------------------Plots----------------------------------------------------------------
   output$plot <- renderEcharts4r({
