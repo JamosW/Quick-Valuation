@@ -57,7 +57,7 @@ ui <- function(title){
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
   
-  my_future_function()
+  # my_future_function()
   source_python('yahooquery_function.py')
   
   results <- reactive({get_financials(input$ticker)})
