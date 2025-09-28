@@ -34,3 +34,5 @@ def get_financials(ticker):
             return mat
     else:
         return None
+
+

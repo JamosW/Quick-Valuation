@@ -15,6 +15,7 @@ ui <- function(title){
     
     # Application title
     uiOutput("title"),
+    verbatimTextOutput("text"),
     fluidRow(column(2, textInput("ticker", "Enter Ticker", width = "200px")),
     column(1, actionButton("ticker_btn", "Run"), style = "bottom: -25px;")),
     # Sidebar with a slider input for number of bins 
@@ -49,7 +50,7 @@ ui <- function(title){
           DTOutput("tabl")),
           tabPanel("Present Values", echarts4rOutput("plot")),
           tabPanel("Terminal", echarts4rOutput("terminal")),
-          tabPanel("Hypothetical", echarts4rOutput("hypothetical"))
+          tabPanel("Hypothetical", echarts4rOutput("hypothetical")),
         ))
     ))
 }
@@ -193,7 +194,7 @@ server <- function(input, output, session) {
   
   #update numeric inputs when run is clicked
   observe({
-    Map(\(x,y) updateNumericInput(session, x, value = y), lookup[match(names(results()[[1]]), names(lookup))], results()[[1]])
+    Map(\(x,y) updateNumericInput(session, x, value = y), lookup[match(names(results()), names(lookup))], results())
     
     }) |>
     bindEvent(input$ticker_btn)
@@ -260,7 +261,11 @@ server <- function(input, output, session) {
         
         
 ############################################################################################################
-        }
+    output$text <- renderPrint({
+      Map(\(x,y) c(x,y), lookup[match(names(results()), names(lookup))], results())
+      }) |> bindEvent(input$ticker_btn)
+  
+  }
 # Run the application 
 shinyApp(ui , server)
 
