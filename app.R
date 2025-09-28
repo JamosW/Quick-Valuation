@@ -7,6 +7,7 @@ library(profvis)
 library(shinyWidgets)
 library(excelR)
 library(shinymaterial)
+library(rsconnect)
 
 # Define UI for application that draws a histogram
 ui <- function(title){
@@ -261,9 +262,6 @@ server <- function(input, output, session) {
         
         
 ############################################################################################################
-    output$text <- renderPrint({
-      Map(\(x,y) c(x,y), lookup[match(names(results()), names(lookup))], results())
-      }) |> bindEvent(input$ticker_btn)
   
   }
 # Run the application 
