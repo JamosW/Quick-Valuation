@@ -7,7 +7,7 @@ library(profvis)
 library(shinyWidgets)
 library(excelR)
 library(shinymaterial)
-library(rsconnect)
+
 
 # Define UI for application that draws a histogram
 ui <- function(title){
