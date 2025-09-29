@@ -27,12 +27,11 @@ def get_financials(ticker):
         
         mat[mat.index != "TaxRateCalcs"] = per_share_vals
         
-        if(len(set_diff) > 0):
-            message = f"{set_diff.pop() if len(set_diff) > 0 else None} was not found in search, it should be entered manually"
-            return mat, message
-        else:
-            return mat
+        #if(len(set_diff) > 0):
+            #message = f"{set_diff.pop() if len(set_diff) > 0 else None} was not found in search, it should be entered manually"
+            #return mat, message
+        #else:
+        return mat
     else:
         return None
-
 
